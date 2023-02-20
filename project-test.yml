@@ -204,7 +204,9 @@ Resources:
         Type: AWS::EC2::SubnetRouteTableAssociation
         Properties:
             RouteTableId: !Ref PrivateRouteTable2
-            SubnetId: !Ref PrivateSubnet2                 
+            SubnetId: !Ref PrivateSubnet2       
+
+
 
 
 # 2. SERVER
@@ -231,53 +233,34 @@ Resources:
                 ToPort: 65535
                 CidrIp: 0.0.0.0/0
 
-
-  # Role & Instance Profile for ec2 : can only read s3
     UdacityS3ReadOnlyEC2:
-        Type: "AWS::IAM::Role"
+        Type: AWS::IAM::Role
         Properties:
             AssumeRolePolicyDocument:
                 Version: "2012-10-17"
                 Statement:
-                -   Effect: "Allow"
+                -   Effect: Allow
                     Principal: 
                         Service:
-                            - "ec2.amazonaws.com"
+                            - ec2.amazonaws.com
                     Action: 
-                      - "sts:AssumeRole"
-            Path: "/"
-    
-    RolePolicies: 
-        Type: "AWS::IAM::Policy"
-        Properties: 
-            PolicyName: "root"
-            PolicyDocument: 
-                Version: "2012-10-17"
-                Statement: 
-                -   Effect: "Allow"
-                    # Action: "s3:GetObject"
-                    Action: "s3:*"
-                    Resource: "arn:aws:s3:::ngocht-631392691795"
-            Roles: 
-                - Ref: "UdacityS3ReadOnlyEC2"
-            # Policies:
-            #     -   PolicyName: "root"
-            #         PolicyDocument:
-            #           Version: "2012-10-17"
-            #           Statement:
-            #             -   Effect: Allow
-            #                 Action: 
-                                # - 's3:GetObject'
-                                # - 's3:ListBucket'
-            #                 Resource: 
-                                # - 'arn:aws:s3:::ngocht-631392691795'
-                                # - 'arn:aws:s3:::ngocht-631392691795/*'
-    ProfileWithRolesForOurApp:
+                      - 'sts:AssumeRole'
+            Path: /
+            Policies: 
+              - PolicyName: root
+                PolicyDocument:
+                  Version: "2012-10-17"
+                  Statement:
+                    - Effect: Allow
+                      Action: 's3:GetObject'
+                      Resource: '*'
+
+    ServerInstanceProfile:
         Type: AWS::IAM::InstanceProfile
         Properties:
             Path: "/" 
             Roles:
-                - Ref: "UdacityS3ReadOnlyEC2"
+                - !Ref UdacityS3ReadOnlyEC2
 
 
     WebAppLaunchConfig:
@@ -288,20 +271,16 @@ Resources:
                 Fn::Base64: !Sub |
                     #!/bin/bash
                     sudo apt-get update -y
-                    sudo apt-get install awscli -y
+                    sudo apt-get install unzip awscli -y
                     sudo apt-get install apache2 -y
                     sudo systemctl start apache2.service   
                     cd /var/www/html
-                    aws configure set aws_access_key_id "ASIAZGAPP4ZJ73UBPNNJ"
-                    aws configure set aws_secret_access_key "wpni0Meam6SBW51LssBDSXbASPgM/IqYhLYj4JBu"
-                    aws configure set aws_session_token "IQoJb3JpZ2luX2VjEAUaDmFwLXNvdXRoZWFzdC0xIkcwRQIgeS8O3L9v1F9tpM/bgq+24iIo8BpAwTQAoExyaZ5X9EMCIQCsMf2TlgROb0dc4jH4fiIWxZRkTrn+l3NoJFv3UZqzJSr1Agie//////////8BEAAaDDYzMTM5MjY5MTc5NSIM3zXvQaDO6KXg7+RCKskC9k2AQlVdvtcbLPvV5Zm0NDmd43+AG3btVal/rrCqo3CepLRY+zB5OGRxIRDcuA/+7dlfAq+5HGtGIivYax+f+mnd5ak7jKKJGUJ6hoDuTDhHSv6nHikCj/MHbHoAqkhsYGC1c0R/7z2+Wcc5uNlLork2JCoiNPoNo4neKafMH7+gt9GUa7/Cne7gGTdPOAnoB/FUsp7L7XAN/lcovfSN4wcJp2R9q+TViaB7w1lxc7LAJ7vT8TVUtJyJFvpxypySTw+3SF0G0Wcsc59zRx24APfPEnn45H2HucQqUhEZAseiFr7EdcBruoXuGyWohXbX5M0m+HPI/CnHiIHfOzqNbzEUwtUiFqaDqyyqRqZyAGkyuwUJYqnRAdRJWxs1+CNB7BZO9Z2sc2VCIj6UzevLl8N9Zos/AQ49iqrAY3Tjx5SkNfIzp8hAGxkwnPzLnwY6pwFAIYWLHVlSi2sMfqFx74avCT4RXpiGlVgIp2s3Qo6mVvANC2a5aeUWB12TNFa9xsyZUP6tLCcCwcDzGHZpyjntkSoq2ufKBMoOLTGEmHtZ4rrZHxDMg1hkn8amtTzN4MjYPwO+pnRnCST2VGIjktSSS6RNQ6kAIeFmzsAt5WZ7VPTQjGixPcUbH8Q5AZZJ9RnbpVxD2gf3RuSw0InBg8yp+LpsHZ2swA==" configure set 
-                    sudo chmod 777 index.html
                     aws s3api get-object --bucket ngocht-631392691795 --key index.html index.html
 
             ImageId: !Ref AMI
             # ToDo: Change the key-pair name, as applicable to you. 
             KeyName: !Ref Key
-            IamInstanceProfile: !Ref ProfileWithRolesForOurApp
+            IamInstanceProfile: !Ref ServerInstanceProfile
             SecurityGroups:
             -   Ref: WebServerSecGroup
             InstanceType: !Ref TypeOfInstance
@@ -321,8 +300,7 @@ Resources:
             MinSize: '4'
             MaxSize: '5'
             TargetGroupARNs:
-            - Ref: WebAppTargetGroup     
-
+            - Ref: WebAppTargetGroup 
 
 # # 2.2.Load balancer: control traffic
     LBSecGroup:
@@ -339,7 +317,7 @@ Resources:
             -   IpProtocol: tcp
                 FromPort: 80
                 ToPort: 80
-                CidrIp: 0.0.0.0/0     
+                CidrIp: 0.0.0.0/0 
 
     WebAppLB:
         Type: AWS::ElasticLoadBalancingV2::LoadBalancer
@@ -374,7 +352,6 @@ Resources:
             ListenerArn: !Ref 'Listener'
             Priority: 1       
 
-
     WebAppTargetGroup:
         Type: AWS::ElasticLoadBalancingV2::TargetGroup
         Properties:
@@ -387,3 +364,4 @@ Resources:
             Protocol: HTTP
             UnhealthyThresholdCount: 5
             VpcId: !Ref VPC
+

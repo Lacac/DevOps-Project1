@@ -25,13 +25,15 @@
 	}, 
 	{
 		"ParameterKey": "AMI",
-		"ParameterValue": "ami-06292ffafe4773f6c"
+		"ParameterValue": "ami-082b1f4237bd816a1"
 	},
 	{	"ParameterKey": "Key",
 		"ParameterValue": "ngocht-key"
 	},
 	{
 		"ParameterKey": "TypeOfInstance",
-		"ParameterValue": "t3.medium"		
+		"ParameterValue": "t2.micro"		
 	}
 ]
+
+
