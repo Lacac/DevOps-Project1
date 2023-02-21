@@ -365,3 +365,75 @@ Resources:
             UnhealthyThresholdCount: 5
             VpcId: !Ref VPC
 
+
+
+# Basion host: Server EC2 Instance: help ssh to ec2 instance in private subnet.
+
+# IAM Role to allow EC2 Session Manager to access our server
+    RoleForSSMAccess: 
+        Type: "AWS::IAM::Role"
+        Properties:
+          AssumeRolePolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Principal:
+                  Service:
+                    - ec2.amazonaws.com
+                Action:
+                  - 'sts:AssumeRole'
+          ManagedPolicyArns:
+            - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+# Instance Profile
+    ServerProfile: 
+        Type: "AWS::IAM::InstanceProfile"
+        Properties: 
+          Roles: 
+            - !Ref RoleForSSMAccess
+
+
+# Security Group
+    WebAccessSecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+          GroupDescription: Allow http to our test host
+          VpcId: !Ref VPC
+          SecurityGroupIngress:
+          - IpProtocol: tcp
+            FromPort: 80
+            ToPort: 80
+            CidrIp: 0.0.0.0/0
+          - IpProtocol: tcp
+            FromPort: 22
+            ToPort: 22
+            CidrIp: 0.0.0.0/0          
+          SecurityGroupEgress:
+          - IpProtocol: tcp
+            FromPort: 0
+            ToPort: 65535
+            CidrIp: 0.0.0.0/0
+
+    ServerInstance: 
+      Type: AWS::EC2::Instance
+      Properties:
+        InstanceType: t2.micro
+        ImageId: !Ref AMI
+        KeyName: basion-key
+        IamInstanceProfile: !Ref ServerProfile
+        NetworkInterfaces: 
+          - AssociatePublicIpAddress: "true"
+            DeviceIndex: "0"
+            GroupSet: 
+              - Ref: "WebAccessSecurityGroup"
+            SubnetId: 
+              !Ref PublicSubnet1
+            
+
+Outputs:
+    URL: 
+        Description: URL of LoadBalancer 
+        Value: !Sub
+            - 'http://${domain}'
+            - domain: !GetAtt WebAppLB.DNSName
+        Export:
+          Name: !Sub ${EnvironmentName}-URL-LB
